@@ -55,6 +55,8 @@
 
 /* History:
  *
+ * 1.36-lm1 - 2014-04-19 - Leo (http://nucleus.slightlysome.net/leo)
+ *  * Tested and updated to run on PHP 5.4 and MySQL 5.5.
  * 1.36 - 02/26/2010 -
  *  * allow a show parameter of 'none' to permit use of some of the features like sorting by author, and category-specific templates for items without overhead of ordered query
  * 1.35 - 10/14/2009 -
@@ -130,18 +132,18 @@ class NP_Ordered extends NucleusPlugin {
 
 	// author of plugin
 	function getAuthor()  {
-		return 'Frank Truscott';
+		return 'Frank Truscott, Leo';
 	}
 
 	// an URL to the author's website
 	function getURL()
 	{
-		return "http://revcetera.com/ftruscot";
+		return "http://nucleus.slightlysome.net/plugins/ordered";
 	}
 
 	// version of the plugin
 	function getVersion() {
-		return '1.36';
+		return '1.36-lm1';
 	}
 
 	// a description to be shown on the installed plugins listing
@@ -164,7 +166,7 @@ class NP_Ordered extends NucleusPlugin {
 		$this->createOption('quickmenu', 'Show Admin Area in quick menu?', 'yesno', 'yes');
         $this->createOption('del_uninstall', 'Delete NP_Ordered data tables on uninstall?', 'yesno','no');
 // create and populate table for item order
-        sql_query("CREATE TABLE IF NOT EXISTS ".sql_table('plug_ordered_blog')." (`oitemid` int(11) NOT NULL, `onumber` int(11) NOT NULL default '0', PRIMARY KEY(`oitemid`), UNIQUE KEY `oitemid` (`oitemid`)) TYPE=MyISAM;");
+        sql_query("CREATE TABLE IF NOT EXISTS ".sql_table('plug_ordered_blog')." (`oitemid` int(11) NOT NULL, `onumber` int(11) NOT NULL default '0', PRIMARY KEY(`oitemid`), UNIQUE KEY `oitemid` (`oitemid`)) ENGINE=MyISAM;");
 
         $oarr = array();
         $ores = sql_query("SELECT * FROM ".sql_table('plug_ordered_blog'));
@@ -178,7 +180,7 @@ class NP_Ordered extends NucleusPlugin {
             }
         }
 // create and populate table for catgegory order
-		sql_query("CREATE TABLE IF NOT EXISTS ".sql_table('plug_ordered_cat')." (`ocatid` int(11) NOT NULL, `onumber` int(11) NOT NULL default '0', `otemplate` varchar(20) NOT NULL default '', `oitemplate` varchar(20) NOT NULL default '', `omainpage` tinyint(2) NOT NULL default '1', PRIMARY KEY(`ocatid`), UNIQUE KEY `ocatid` (`ocatid`)) TYPE=MyISAM;");
+		sql_query("CREATE TABLE IF NOT EXISTS ".sql_table('plug_ordered_cat')." (`ocatid` int(11) NOT NULL, `onumber` int(11) NOT NULL default '0', `otemplate` varchar(20) NOT NULL default '', `oitemplate` varchar(20) NOT NULL default '', `omainpage` tinyint(2) NOT NULL default '1', PRIMARY KEY(`ocatid`), UNIQUE KEY `ocatid` (`ocatid`)) ENGINE=MyISAM;");
 
 		if (mysql_num_rows(sql_query("SHOW COLUMNS FROM ".sql_table('plug_ordered_cat')." LIKE '%oitemplate%'")) == 0) {
 			sql_query("ALTER TABLE ".sql_table('plug_ordered_cat')." ADD `oitemplate` varchar(20) NOT NULL default '' AFTER `otemplate`");
@@ -197,7 +199,7 @@ class NP_Ordered extends NucleusPlugin {
         }
 		
 // create and populate table for bloglist order
-        sql_query("CREATE TABLE IF NOT EXISTS ".sql_table('plug_ordered_bloglist')." (`oblogid` int(11) NOT NULL, `onumber` int(11) NOT NULL default '0', PRIMARY KEY(`oblogid`), UNIQUE KEY `oblogid` (`oblogid`)) TYPE=MyISAM;");
+        sql_query("CREATE TABLE IF NOT EXISTS ".sql_table('plug_ordered_bloglist')." (`oblogid` int(11) NOT NULL, `onumber` int(11) NOT NULL default '0', PRIMARY KEY(`oblogid`), UNIQUE KEY `oblogid` (`oblogid`)) ENGINE=MyISAM;");
 
         $oarr = array();
         $ores = sql_query("SELECT * FROM ".sql_table('plug_ordered_bloglist'));
@@ -801,12 +803,16 @@ class NP_Ordered extends NucleusPlugin {
 
 	function _preBlogContent($type, &$blog) {
 		global $manager;
-		$manager->notify('PreBlogContent',array('blog' => &$blog, 'type' => $type));
+		
+		$eventdata = array('blog' => &$blog, 'type' => $type);
+		$manager->notify('PreBlogContent', $eventdata);
 	}
 
 	function _postBlogContent($type, &$blog) {
 		global $manager;
-		$manager->notify('PostBlogContent',array('blog' => &$blog, 'type' => $type));
+		
+		$eventdata = array('blog' => &$blog, 'type' => $type);
+		$manager->notify('PostBlogContent', $eventdata);
 	}
 // this is a slight mod of readLog method of NucleusCMS class BLOG, BLOG.php
     function readLog(&$b, $template, $amountEntries, $offset = 0, $startpos = 0, $theorder = 'itime DESC') {
@@ -979,37 +985,44 @@ class NP_Ordered extends NucleusPlugin {
 					$timestamp = $item->timestamp;
 					if ($old_date != 0) {
 						$oldTS = strtotime($old_date);
-						$manager->notify('PreDateFoot',array('blog' => &$b, 'timestamp' => $oldTS));
+						$eventdata = array('blog' => &$b, 'timestamp' => $oldTS);
+						$manager->notify('PreDateFoot', $eventdata);
 						$tmp_footer = strftime($template['DATE_FOOTER'], $oldTS);
 						$parser->parse($tmp_footer);
-						$manager->notify('PostDateFoot',array('blog' => &$b, 'timestamp' => $oldTS));
+						$eventdata = array('blog' => &$b, 'timestamp' => $oldTS);
+						$manager->notify('PostDateFoot', $eventdata);
 					}
-					$manager->notify('PreDateHead',array('blog' => &$b, 'timestamp' => $timestamp));
+					$eventdata = array('blog' => &$b, 'timestamp' => $timestamp);
+					$manager->notify('PreDateHead', $eventdata);
 					// note, to use templatvars in the dateheader, the %-characters need to be doubled in
 					// order to be preserved by strftime
 					$tmp_header = strftime($template['DATE_HEADER'],$timestamp);
 					$parser->parse($tmp_header);
-					$manager->notify('PostDateHead',array('blog' => &$b, 'timestamp' => $timestamp));
+					$eventdata = array('blog' => &$b, 'timestamp' => $timestamp);
+					$manager->notify('PostDateHead', $eventdata);
 				}
 				$old_date = $new_date;
 			}
 
 			// parse item
 			$parser->parse($template['ITEM_HEADER']);
-			$manager->notify('PreItem', array('blog' => &$b, 'item' => &$item));
+			$eventdata = array('blog' => &$b, 'item' => &$item);
+			$manager->notify('PreItem', $eventdata);
 			$parser->parse($template['ITEM']);
-			$manager->notify('PostItem', array('blog' => &$b, 'item' => &$item));
+			$eventdata = array('blog' => &$b, 'item' => &$item);
+			$manager->notify('PostItem', $eventdata);
 			$parser->parse($template['ITEM_FOOTER']);
-
 		}
 
 		$numrows = mysql_num_rows($items);
 
 		// add another date footer if there was at least one item
 		if (($numrows > 0) && $dateheads) {
-			$manager->notify('PreDateFoot',array('blog' => &$b, 'timestamp' => strtotime($old_date)));
+			$eventdata = array('blog' => &$b, 'timestamp' => strtotime($old_date));
+			$manager->notify('PreDateFoot', $eventdata);
 			$parser->parse($template['DATE_FOOTER']);
-			$manager->notify('PostDateFoot',array('blog' => &$b, 'timestamp' => strtotime($old_date)));
+			$eventdata = array('blog' => &$b, 'timestamp' => strtotime($old_date));
+			$manager->notify('PostDateFoot', $eventdata);
 		}
 
 		mysql_free_result($items);	// free memory
@@ -1106,12 +1119,8 @@ class NP_Ordered extends NucleusPlugin {
 				}
 			}
 
-			$manager->notify(
-				'PreCategoryListItem',
-				array(
-					'listitem' => &$data
-				)
-			);
+			$eventdata = array('listitem' => &$data);
+			$manager->notify('PreCategoryListItem', $eventdata);
 			
 			$temp = TEMPLATE::fill($template['CATLIST_LISTITEM'],$data);
 			echo strftime($temp,$current->itime);
@@ -1254,12 +1263,8 @@ class NP_Ordered extends NucleusPlugin {
 
 			$list['itemcount'] = $data['itemcount'];
 			
-			$manager->notify(
-				'PreBlogListItem',
-				array(
-					'listitem' => &$list
-				)
-			);
+			$eventdata = array('listitem' => &$list );
+			$manager->notify('PreBlogListItem', $eventdata);
 
 			echo TEMPLATE::fill((isset($template['BLOGLIST_LISTITEM']) ? $template['BLOGLIST_LISTITEM'] : null), $list);
 //echo "<br />amount: $amount";
